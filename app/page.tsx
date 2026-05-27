@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Script from 'next/script';
+import DonationOptions from '@/components/DonationOptions';
+import MobileNotification from '@/components/MobileNotification';
+import DesktopNotification from '@/components/DesktopNotification';
 
 declare global {
   interface Window {
@@ -31,9 +34,6 @@ interface RazorpayResponse {
   razorpay_signature: string;
 }
 
-const AMOUNT_PAISE = Number(process.env.NEXT_PUBLIC_DONATION_AMOUNT) || 19900;
-const AMOUNT_RUPEES = `₹${(AMOUNT_PAISE / 100).toFixed(0)}`;
-
 export default function Home() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -42,6 +42,9 @@ export default function Home() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'receipt' | 'processing-payment' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [paymentId, setPaymentId] = useState('');
+  const [selectedAmount, setSelectedAmount] = useState(199);
+  const amountPaise = selectedAmount * 100;
+  const amountRupee = `₹${selectedAmount}`;
 
   const handleDonateClick = async () => {
     setStatus('loading');
@@ -52,7 +55,7 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: AMOUNT_PAISE,
+          amount: amountPaise,
           currency: 'INR',
           email: '',
           name: '',
@@ -67,7 +70,7 @@ export default function Home() {
 
       const rzp = new window.Razorpay({
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-        amount: AMOUNT_PAISE,
+        amount: amountPaise,
         currency: 'INR',
         name: 'Academic Seva',
         description: 'Urgent Student Needs — Donation',
@@ -106,7 +109,7 @@ export default function Home() {
           taxExempt,
           name: name.trim() || '',
           pan: pan.trim() || '',
-          amount: AMOUNT_PAISE / 100,
+          amount: amountPaise / 100,
         }),
       });
     } catch {
@@ -122,7 +125,7 @@ export default function Home() {
 
   // SUCCESS SCREEN
   if (status === 'success') {
-    return <SuccessScreen name={name} email={email} amount={AMOUNT_RUPEES} paymentId={paymentId} />;
+    return <SuccessScreen name={name} email={email} amount={amountRupee} paymentId={paymentId} />;
   }
 
   // RECEIPT FORM (after successful payment)
@@ -230,15 +233,24 @@ export default function Home() {
 
       <main className="pb-20">
         {/* Hero Section */}
-        <section className="relative h-[70vh] flex items-end justify-center overflow-hidden">
+        <section className="relative min-h-[90vh] flex items-end justify-center overflow-hidden">
           <div className="absolute inset-0 z-0">
             <img alt="Students in urgent need" className="w-full h-full object-cover grayscale-[30%] brightness-75" src="/images/hero.jpg" />
             <div className="absolute inset-0 hero-gradient"></div>
           </div>
-          <div className="relative z-10 w-full max-w-container-max px-gutter pb-stack-lg text-white text-center">
+          <div className="relative z-10 w-full max-w-container-max px-gutter pb-12 md:pb-stack-lg text-white text-center">
             <h1 className="font-headline-lg-mobile md:font-headline-xl text-headline-lg-mobile md:text-headline-xl mb-4 leading-tight">Urgent Student Needs.</h1>
-            <p className="font-body-md text-body-md mb-8 text-primary-fixed opacity-90 max-w-lg mx-auto uppercase tracking-widest font-bold">A childhood is being lost right now. Help provide the essentials for ₹199.</p>
-            <a className="inline-block bg-hope-amber text-white font-label-caps text-label-caps py-4 px-10 tracking-[0.2em] uppercase transition-all duration-500 hover:shadow-xl active:opacity-80" href="#needs">Provide Help</a>
+            <p className="font-body-md text-body-md mb-8 text-primary-fixed opacity-90 max-w-lg mx-auto uppercase tracking-widest font-bold">A childhood is being lost right now. Choose your impact below.</p>
+            <div className="max-w-2xl mx-auto">
+              <DonationOptions onSelect={setSelectedAmount} selectedAmount={selectedAmount} />
+              <button
+                onClick={handleDonateClick}
+                disabled={status !== 'idle'}
+                className="mt-8 w-full bg-hope-amber text-white font-label-caps text-label-caps py-4 px-10 tracking-[0.2em] uppercase transition-all duration-500 hover:shadow-xl active:opacity-80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Provide Help &mdash; {amountRupee}
+              </button>
+            </div>
           </div>
         </section>
 
@@ -247,7 +259,7 @@ export default function Home() {
           <div className="max-w-container-max mx-auto">
             <div className="text-center mb-12">
               <h2 className="font-headline-lg text-headline-lg text-slate-deep mb-4">Urgent Needs Directory</h2>
-              <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl mx-auto">Select a specific area to direct your support. Every contribution of ₹199 makes a specific, life-changing difference for a family or student.</p>
+              <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl mx-auto">Select a specific area to direct your support. Choose from ₹199, ₹499, ₹999 or a custom amount — every contribution makes a life-changing difference.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Need Item: Tuition & Books */}
@@ -256,10 +268,7 @@ export default function Home() {
                 <div className="p-6 flex-grow flex flex-col">
                   <span className="text-error-subdued font-label-caps text-label-caps mb-2 block uppercase tracking-widest font-bold">Urgent Need: Education</span>
                   <h3 className="font-headline-lg text-2xl text-slate-deep mb-3">Student Tuition &amp; Books</h3>
-                  <p className="font-body-md text-body-md text-on-surface-variant mb-6 flex-grow">For thousands of children, a pencil isn&apos;t a choice; it&apos;s daily survival. When you can&apos;t afford books, dreaming of the future is impossible. Your ₹199 provides essential learning materials.</p>
-                  <button onClick={handleDonateClick} disabled={status !== 'idle'} className="block text-center w-full bg-slate-deep text-white font-label-caps text-label-caps py-4 px-6 tracking-widest uppercase transition-all duration-300 hover:bg-tertiary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                    Support This Child
-                  </button>
+                  <p className="font-body-md text-body-md text-on-surface-variant mb-0 flex-grow">For thousands of children, a pencil isn&apos;t a choice; it&apos;s daily survival. When you can&apos;t afford books, dreaming of the future is impossible. Your ₹199 provides essential learning materials.</p>
                 </div>
               </div>
               {/* Need Item: Family Nutrition */}
@@ -268,10 +277,7 @@ export default function Home() {
                 <div className="p-6 flex-grow flex flex-col">
                   <span className="text-error-subdued font-label-caps text-label-caps mb-2 block uppercase tracking-widest font-bold">Urgent Need: Survival</span>
                   <h3 className="font-headline-lg text-2xl text-slate-deep mb-3">Family Nutrition Kit</h3>
-                  <p className="font-body-md text-body-md text-on-surface-variant mb-6 flex-grow">Hunger doesn&apos;t wait. Provide a vulnerable family with the basic nutrition they need to survive, ensuring children have the energy to learn and grow. Just ₹199 makes a profound difference.</p>
-                  <button onClick={handleDonateClick} disabled={status !== 'idle'} className="block text-center w-full bg-slate-deep text-white font-label-caps text-label-caps py-4 px-6 tracking-widest uppercase transition-all duration-300 hover:bg-tertiary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                    Provide Help
-                  </button>
+                  <p className="font-body-md text-body-md text-on-surface-variant mb-0 flex-grow">Hunger doesn&apos;t wait. Provide a vulnerable family with the basic nutrition they need to survive, ensuring children have the energy to learn and grow. Just ₹199 makes a profound difference.</p>
                 </div>
               </div>
               {/* Need Item: Digital Learning */}
@@ -280,10 +286,7 @@ export default function Home() {
                 <div className="p-6 flex-grow flex flex-col">
                   <span className="text-error-subdued font-label-caps text-label-caps mb-2 block uppercase tracking-widest font-bold">Urgent Need: Access</span>
                   <h3 className="font-headline-lg text-2xl text-slate-deep mb-3">Digital Learning Access</h3>
-                  <p className="font-body-md text-body-md text-on-surface-variant mb-6 flex-grow">Bridge the widening digital divide. Give a student the crucial tools to connect to modern education and build a brighter future. ₹199 unlocks digital access for those left behind.</p>
-                  <button onClick={handleDonateClick} disabled={status !== 'idle'} className="block text-center w-full bg-slate-deep text-white font-label-caps text-label-caps py-4 px-6 tracking-widest uppercase transition-all duration-300 hover:bg-tertiary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                    Support This Child
-                  </button>
+                  <p className="font-body-md text-body-md text-on-surface-variant mb-0 flex-grow">Bridge the widening digital divide. Give a student the crucial tools to connect to modern education and build a brighter future. ₹199 unlocks digital access for those left behind.</p>
                 </div>
               </div>
               {/* Need Item: Health & Hygiene */}
@@ -291,10 +294,7 @@ export default function Home() {
                 <span className="material-symbols-outlined text-hope-amber text-5xl mb-4">medical_services</span>
                 <span className="text-error-subdued font-label-caps text-label-caps mb-2 block uppercase tracking-widest font-bold">Urgent Need: Wellbeing</span>
                 <h3 className="font-headline-lg text-2xl text-slate-deep mb-3">Health &amp; Hygiene Support</h3>
-                <p className="font-body-md text-body-md text-on-surface-variant mb-6 flex-grow">Basic hygiene and medical care are often out of reach. Protect a child&apos;s health and dignity with a vital hygiene kit. Every ₹199 ensures a safer, healthier tomorrow.</p>
-                <button onClick={handleDonateClick} disabled={status !== 'idle'} className="block text-center w-full bg-hope-amber text-white font-label-caps text-label-caps py-4 px-6 tracking-widest uppercase transition-all duration-300 hover:brightness-110 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                  Provide Help
-                </button>
+                <p className="font-body-md text-body-md text-on-surface-variant mb-0 flex-grow">Basic hygiene and medical care are often out of reach. Protect a child&apos;s health and dignity with a vital hygiene kit. Every ₹199 ensures a safer, healthier tomorrow.</p>
               </div>
             </div>
           </div>
@@ -302,31 +302,21 @@ export default function Home() {
 
         {/* Streamlined Impact & CTA */}
         <section className="py-12 px-gutter bg-white border-y border-outline-variant" id="donate">
-          <div className="max-w-[500px] mx-auto text-center">
+          <div className="max-w-2xl mx-auto text-center">
             <h2 className="font-headline-lg text-headline-lg text-slate-deep mb-4">Will you let them wait?</h2>
-            <div className="flex justify-center gap-8 mb-10 text-on-surface-variant">
-              <div className="flex flex-col items-center">
-                <span className="material-symbols-outlined text-hope-amber mb-1">menu_book</span>
-                <span className="text-[10px] uppercase font-bold tracking-tighter">Books</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="material-symbols-outlined text-hope-amber mb-1">restaurant</span>
-                <span className="text-[10px] uppercase font-bold tracking-tighter">Meals</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="material-symbols-outlined text-hope-amber mb-1">backpack</span>
-                <span className="text-[10px] uppercase font-bold tracking-tighter">Tools</span>
-              </div>
+            <p className="font-body-md text-body-md text-on-surface-variant mb-8 max-w-lg mx-auto">
+              ₹199 is all it takes to start. But ₹499 buys school books, and ₹999 provides a full bag & uniform set. Choose your impact.
+            </p>
+            <div className="mb-8 text-left">
+              <DonationOptions onSelect={setSelectedAmount} selectedAmount={selectedAmount} />
             </div>
             <div className="bg-surface p-8 border border-outline-variant">
-              <h3 className="font-headline-lg text-[24px] text-slate-deep mb-2">Provide Urgent Help Today</h3>
-              <p className="font-body-md text-body-md text-on-surface-variant mb-6">₹199 is all it takes to bridge the gap between despair and a dream.</p>
               <button
                 onClick={handleDonateClick}
                 disabled={status !== 'idle'}
                 className="w-full bg-hope-amber text-white font-label-caps text-label-caps py-5 px-gutter tracking-widest uppercase transition-all duration-300 hover:brightness-110 active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Support This Child Now
+                Donate {amountRupee} Now
               </button>
               <p className="mt-4 font-label-caps text-[10px] text-outline uppercase tracking-tighter">Secure Payment via Razorpay</p>
             </div>
@@ -346,11 +336,14 @@ export default function Home() {
         </p>
       </footer>
 
+      <MobileNotification />
+      <DesktopNotification />
+
       <div className="fixed bottom-0 left-0 right-0 z-[60] bg-white border-t border-outline-variant p-4 md:hidden flex items-center justify-between shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
         <div className="flex flex-col">
-          <span className="text-sm font-bold text-slate-deep">Every ₹199 helps a student in need.</span>
+          <span className="text-sm font-bold text-slate-deep">Support a student with {amountRupee}.</span>
         </div>
-        <a className="bg-hope-amber text-white font-label-caps text-[12px] py-3 px-6 uppercase tracking-wider font-bold" href="#donate">Provide Help</a>
+        <a className="bg-hope-amber text-white font-label-caps text-[12px] py-3 px-6 uppercase tracking-wider font-bold" href="#donate">Donate</a>
       </div>
     </>
   );
